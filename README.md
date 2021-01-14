@@ -6,7 +6,6 @@
 
 ## Description
 
-https://github.com/jwhendershott/weather-application
 https://jwhendershott.github.io/weather-application/
 
 A weather application that shows the 5 day forcast which includes the current temperature in farenheit, wind speed, and humidity.
