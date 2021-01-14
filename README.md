@@ -1,22 +1,19 @@
-# Workday Schedule Application
+# Weather Application
 
-![Work Day Scheduler](https://user-images.githubusercontent.com/70990105/104234424-ffa6c580-5418-11eb-82d6-676d5c5efb36.gif)
+![Weather Dashboard](https://user-images.githubusercontent.com/70990105/104535125-30365d00-55db-11eb-8254-20484ee2cd55.gif)
 
 <hr>
 
 ## Description
 
-https://jwhendershott.github.io/Workday-Scheduler/
 
-An application that allows the user to view time blocks for business hours color coded for past, present, and future.
-* When the user clicks the time block, the user is able to enter an event
-* When the user clicks the save button, the event is saved in local storage
-* Saved changes persist on page refresh
+
+A weather application that shows the 5 day forcast which includes the current temperature in farenheit, wind speed, and humidity.
+
+The application allows users to add multiple cities and the search history remains on refresh until the history is cleared.
 
 ## Credits
-
 * The Coding Boot Camp at UT Austin - https://github.com/the-Coding-Boot-Camp-at-UT
-* Jose Cordova (collaborator) 
 
 ## License
 

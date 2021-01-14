@@ -1,120 +1,153 @@
-//global variables
-var scheduledHours = [];
-var availableHours = {};
-var m = moment();
-var newDay = moment().hour(0);
-var currentTime = m.hour();
+//Variable declaration
+var city="";
+var searchCity = $("#search-city");
+var searchButton = $("#search-button");
+var clearButton = $("#clear-history");
+var currentCity = $("#current-city");
+var currentTemperature = $("#temperature");
+var currentHumidty= $("#humidity");
+var currentWSpeed=$("#wind-speed");
+var sCity=[];
 
-// adding clock to currentDay id
-function clock() {
-  var dateString = moment().format("MMM Do YY");
-  $('#currentDay').html(dateString);
-}
-
-setInterval(clock, 1000);
-
-//generating textareas for scheduling
-for (var hour = 9; hour < 18; hour++) {
-  scheduledHours.push(moment({hour}).format('h  a'));
-  $('.container').append(`<div class='row time-block' data-time='${hour}'>
-       <!--hour column-->
-           <div class='col-sm col-md-2 hour'>
-             <p>${moment({hour}).format('h  a')}</p>
-           </div>
-
-        <!--scheduling column-->
-           <div class='col-sm col-md-10 d-flex description'>
-              <div class='input-group'>
-                <textarea class="form-control text-area"></textarea>
-                <div class='input-group-append'>
-                  <button class='save-button d-flex justify-center align-center'>
-                    <i class='far fa-save fa-2x save-icon'></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>`);
-}
-
-//Checking time to determine present, past, or future
-$.each($('.time-block'), function(index, value) {
-  let dateHour = $(value).attr('data-time');
-  if (Number(dateHour) === m.hour()) {
-    $(this).find('textarea').addClass('present');
-  } else if (Number(dateHour) < m.hour()) {
-    $(this).find('textarea').addClass('past').attr('disabled', 'disabled');
-    $(this).find('.save-button').addClass('disabled').attr('disabled', true);
-  } else {
-    $(this).find('textarea').addClass('future');
-  }
-});
-
-console.log(currentTime);
-
-if (currentTime >=0 && currentTime < 9){
-  localStorage.clear();
-}
-
-//Check for local storage to set value to the object and clearing if currentTime is between 12am and 9am
-if (localStorage.getItem('availableHours')) {
-  availableHours = JSON.parse(localStorage.getItem('availableHours'));
-} else {
-  availableHours = {
-    '9': {
-      time: '9',
-      value: ''
-    },
-    '10': {
-      time: '10',
-      value: ''
-    },
-    '11': {
-      time: '11',
-      value: ''
-    },
-    '12': {
-      time: '12',
-      value: ''
-    },
-    '13': {
-      time: '13',
-      value: ''
-    },
-    '14': {
-      time: '14',
-      value: ''
-    },
-    '15': {
-      time: '15',
-      value: ''
-    },
-    '16': {
-      time: '16',
-      value: ''
-    },
-    '17': {
-      time: '17',
-      value: ''
+//Searches the city to see if it exists in the entries from the storage
+function find(c){
+    for (var i=0; i<sCity.length; i++){
+        if(c.toUpperCase()===sCity[i]){
+            return -1;
+        }
     }
-  };
+    return 1;
+}
+//Sets variable for API key
+var APIKey="f7468fc8d8fcfb7d4536112bee7db143";
+
+//Displays the curent and future weather
+function displayWeather(event){
+    event.preventDefault();
+    if(searchCity.val().trim()!==""){
+        city=searchCity.val().trim();
+        currentWeather(city);
+    }
 }
 
-//set value of availableHours to equal the user input for each row
-$('.time-block').each(function() {
-  $(this).find('.text-area').val(availableHours[$(this).attr('data-time')].value);
-});
+//Create the AJAX call
+function currentWeather(city){
+    
+    // Builds the URL using string and previously set variables
+    var queryURL= "https://api.openweathermap.org/data/2.5/weather?q=" + city + "&APPID=" + APIKey;
+    $.ajax({
+        url:queryURL,
+        method:"GET",
+    }).then(function(response){
 
-//save value to local storage on click
-$('.save-button').on('click', function(event){
-  event.preventDefault();
+        //Logs the response
+        console.log(response);
 
-  //set availableHours time attribute
-  var timeValue = $(this).closest('.time-block').attr('data-time');
+        var weathericon= response.weather[0].icon;
+        var iconurl="https://openweathermap.org/img/wn/" + weathericon +"@2x.png";
+        var date=new Date(response.dt*1000).toLocaleDateString();
 
-  //set availableHours value attribute
-    var textValue = $(this).closest('.time-block').find('.text-area').val();
-    availableHours[timeValue].value = textValue;
+        $(currentCity).html(response.name +"("+date+")" + "<img src="+iconurl+">");
+        
+        //Converts temp to fahrenheit
+        var tempF = (response.main.temp - 273.15) * 1.80 + 32;
+        $(currentTemperature).html((tempF).toFixed(2)+"&#8457");
+        $(currentHumidty).html(response.main.humidity+"%");
+        
+        //Displays wind speed and converts to MPH
+        var ws=response.wind.speed;
+        var windsmph=(ws*2.237).toFixed(1);
+        $(currentWSpeed).html(windsmph+"MPH");
+        
+        forecast(response.id);
+        if(response.cod==200){
+            sCity=JSON.parse(localStorage.getItem("cityname"));
+            console.log(sCity);
+            if (sCity==null){
+                sCity=[];
+                sCity.push(city.toUpperCase()
+                );
+                localStorage.setItem("cityname",JSON.stringify(sCity));
+                addToList(city);
+            }
+            else {
+                if(find(city)>0){
+                    sCity.push(city.toUpperCase());
+                    localStorage.setItem("cityname",JSON.stringify(sCity));
+                    addToList(city);
+                }
+            }
+        }
 
-  //save user input in each object to local storage
-    localStorage.setItem('availableHours', JSON.stringify(availableHours));
-});
+    });
+}
+    
+//Displays the 5 days forecast for the current city.
+function forecast(cityid){
+    var dayover= false;
+    var queryforcastURL="https://api.openweathermap.org/data/2.5/forecast?id="+cityid+"&appid="+APIKey;
+    $.ajax({
+        url:queryforcastURL,
+        method:"GET"
+    }).then(function(response){
+        
+        for (i=0;i<5;i++){
+            var date= new Date((response.list[((i+1)*8)-1].dt)*1000).toLocaleDateString();
+            var iconcode= response.list[((i+1)*8)-1].weather[0].icon;
+            var iconurl="https://openweathermap.org/img/wn/"+iconcode+".png";
+            var tempK= response.list[((i+1)*8)-1].main.temp;
+            var tempF=(((tempK-273.5)*1.80)+32).toFixed(2);
+            var humidity= response.list[((i+1)*8)-1].main.humidity;
+        
+            $("#fDate"+i).html(date);
+            $("#fImg"+i).html("<img src="+iconurl+">");
+            $("#fTemp"+i).html(tempF+"&#8457");
+            $("#fHumidity"+i).html(humidity+"%");
+        }
+        
+    });
+}
+
+//Adds the passed city on the search history
+function addToList(c){
+    var listEl= $("<li>"+c.toUpperCase()+"</li>");
+    $(listEl).attr("class","list-group-item");
+    $(listEl).attr("data-value",c.toUpperCase());
+    $(".list-group").append(listEl);
+}
+//Displays the past search again when the list group item is clicked in search history
+function invokePastSearch(event){
+    var liEl=event.target;
+    if (event.target.matches("li")){
+        city=liEl.textContent.trim();
+        currentWeather(city);
+    }
+}
+
+// render function
+function loadlastCity(){
+    $("ul").empty();
+    var sCity = JSON.parse(localStorage.getItem("cityname"));
+    if(sCity!==null){
+        sCity=JSON.parse(localStorage.getItem("cityname"));
+        for(i=0; i<sCity.length;i++){
+            addToList(sCity[i]);
+        }
+        city=sCity[i-1];
+        currentWeather(city);
+    }
+
+}
+//Clears search history from the page
+function clearHistory(event){
+    event.preventDefault();
+    sCity=[];
+    localStorage.removeItem("cityname");
+    document.location.reload();
+
+}
+//Click handlers
+$("#search-button").on("click",displayWeather);
+$(document).on("click",invokePastSearch);
+$(window).on("load",loadlastCity);
+$("#clear-history").on("click",clearHistory);
